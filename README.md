@@ -3,6 +3,7 @@ Authors: Jonathan Su, Kevin Liu, Filip Koperwas, Vicson Moses
 
 # Dependencies:
 nltk `pip3 install nltk`
+pandas `pip3 install pandas`
 
 May have to do this if you run into a download error `error at nltk.download() `
 

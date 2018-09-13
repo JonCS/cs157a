@@ -1,7 +1,8 @@
 import nltk
 import math
+import pandas as pd
 
-nltk.download('punkt') #Needs to download thing to use tokenizer function
+nltk.download('punkt') # Needs to download thing to use tokenizer function
 
 def computeTF(tokens):
     tfDict = {}
@@ -28,26 +29,46 @@ def computeIDF(files):
 
     return idfDict
 
-def computeTFIDF(tfTokens, idTokens):
+def computeTFIDF(tfScores, idfScores):
     tfidf = {}
 
-    for token, tfScore in tfTokens:
-        tfidf[token] = tfScore * idTokens[token]
+    for token, tfScore in tfScores:
+        tfidf[token] = tfScore * idfScores[token]
 
     return tfidf
 
-#Main
+# Main
 tfScores = []
-idfScores = []
+idfScore = {}
 tfidfScores = []
 
-for x in range(10): #Open 10 files
+fileDict = []
+tokenSet = set()
+
+for x in range(10):
     string = open('Data_%d.txt' % (x + 1), 'r').read() #Get data from one file
-    tfTokens = nltk.word_tokenize(string) #Create tokens, this gives an array
-    idfTokens = nltk.word_tokenize(string)
+    tokens = nltk.word_tokenize(string) #Create tokens, this gives an array
+    tfScores.append(computeTF(string))
+    fileDict.append(tokens)
+    tokenSet = tokenSet.union(tokens);
 
-    tfScores.append(computeTF(tfTokens))
-    idfScores.append(computeIDF(idfTokens))
+wordDict = dict.fromkeys(tokenSet, 0)
+tfScores.append(computeTF(wordDict))
 
-tfidfScores.append(computeTFIDF(tfScores, idfScores))
-print(tfidfScores)
+#print (tfScores)
+idfScore = computeIDF(tokenSet)
+
+
+'''
+# Compute TF Score for each document
+for tokens in files:
+    tfScores.append(computeTF(tokens))
+
+for tfScore in tfScores:
+    tfidfScores.append(computeTFIDF(tfScore, idfScores))
+pd.DataFrame([tfidfScoresA, tfidfScoresB])
+
+#idfScores = computeIDF(files)
+#tfidfScores = computeTFIDF(tfScores, idfScores)
+#print(tfidfScores)
+'''
