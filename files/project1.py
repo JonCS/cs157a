@@ -4,23 +4,21 @@ import pandas as pd
 
 nltk.download('punkt') # Needs to download thing to use tokenizer function
 
-def computeTF(tokens):
+def computeTF(tokenCount, tokens):
     tfDict = {}
-    for token in tokens: # Loop through all tokens
-        if not token in tfDict: #If key doesn't exist, make new key and set to 1
-            tfDict[token] = 1
-        else: #If key already exists, increment key
-            tfDict[token] = tfDict[token] + 1
-    for key in tfDict: #Once all tokens are counted, compute TF score for each token in the document
-        tfDict[key] = tfDict[key] / float(len(tokens))
+    tokenNum = len(tokens)
+
+    for key, count in tokenCount.items(): #Once all tokens are counted, compute TF score for each token in the document
+        tfDict[key] = count / float(tokenNum)
+
     return tfDict
 
 def computeIDF(files):
-    idfDict = {}
+    idfDict = dict.fromkeys(files[0].keys(), 0)
     fileNum = len(files)
 
-    for doc in files:
-        for token, score in doc.items():
+    for data in files:
+        for token, score in data.items():
             if score > 0:
                 idfDict[token] += 1
 
@@ -32,14 +30,14 @@ def computeIDF(files):
 def computeTFIDF(tfScores, idfScores):
     tfidf = {}
 
-    for token, tfScore in tfScores:
+    for token, tfScore in tfScores.items():
         tfidf[token] = tfScore * idfScores[token]
 
     return tfidf
 
 # Main
+data = []
 tfScores = []
-idfScore = {}
 tfidfScores = []
 
 fileDict = []
@@ -47,28 +45,23 @@ tokenSet = set()
 
 for x in range(10):
     string = open('Data_%d.txt' % (x + 1), 'r').read() #Get data from one file
-    tokens = nltk.word_tokenize(string) #Create tokens, this gives an array
-    tfScores.append(computeTF(string))
-    fileDict.append(tokens)
-    tokenSet = tokenSet.union(tokens);
+    tokens = nltk.word_tokenize(string) # Create tokens, this gives an array
+    data.append(tokens)
+    tokenSet = tokenSet.union(tokens)
 
-wordDict = dict.fromkeys(tokenSet, 0)
-tfScores.append(computeTF(wordDict))
+for tokens in data:
 
-#print (tfScores)
-idfScore = computeIDF(tokenSet)
+    tokenCount = dict.fromkeys(tokenSet, 0)
 
+    for token in tokens: # Loop through all tokens
+        tokenCount[token] += 1 # Inc count
 
-'''
-# Compute TF Score for each document
-for tokens in files:
-    tfScores.append(computeTF(tokens))
+    tfScores.append(computeTF(tokenCount, tokens))
+    fileDict.append(tokenCount)
 
-for tfScore in tfScores:
-    tfidfScores.append(computeTFIDF(tfScore, idfScores))
-pd.DataFrame([tfidfScoresA, tfidfScoresB])
+idfScore = computeIDF(fileDict)
 
-#idfScores = computeIDF(files)
-#tfidfScores = computeTFIDF(tfScores, idfScores)
-#print(tfidfScores)
-'''
+for tf in tfScores:
+    tfidfScores.append(computeTFIDF(tf, idfScore))
+
+print(pd.DataFrame(tfidfScores))
