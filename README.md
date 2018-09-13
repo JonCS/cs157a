@@ -1,6 +1,9 @@
 # cs157a
 Authors: Jonathan Su, Kevin Liu, Filip Koperwas, Vicson Moses
 
+# Dependencies:
+ntlk `pip3 install ntlk`
+
 # Notes:
 
 *Some information may be outdated*
