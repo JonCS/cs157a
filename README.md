@@ -4,6 +4,8 @@ Authors: Jonathan Su, Kevin Liu, Filip Koperwas, Vicson Moses
 # Dependencies:
 nltk `pip3 install nltk`
 pandas `pip3 install pandas`
+mysql.connector `pip3 install mysql-connector`
+prettytable `pip3 install prettytable`
 
 May have to do this if you run into a download error `error at nltk.download() `
 
