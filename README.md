@@ -2,7 +2,7 @@
 Authors: Jonathan Su, Kevin Liu, Filip Koperwas, Vicson Moses
 
 # Dependencies:
-ntlk `pip3 install ntlk`
+nltk `pip3 install nltk`
 
 # Notes:
 
