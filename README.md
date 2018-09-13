@@ -4,6 +4,12 @@ Authors: Jonathan Su, Kevin Liu, Filip Koperwas, Vicson Moses
 # Dependencies:
 nltk `pip3 install nltk`
 
+May have to do this if you run into a download error `error at nltk.download() `
+
+Change directory to the python folder: `cd /Applications/Python 3.6/`
+
+Run the command: `./Install Certificates.command`
+
 # Notes:
 
 *Some information may be outdated*
