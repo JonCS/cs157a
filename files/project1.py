@@ -75,6 +75,7 @@ def insertIntoDB(token, doc_id, tfidf):
 tfScores = []
 fileTokens = []
 
+print('Running program, please wait...')
 for x in range(10):
     string = open('Data_%d.txt' % (x + 1), 'r').read() #Get data from one file
     tokens = nltk.word_tokenize(string) #Create tokens, this gives an array

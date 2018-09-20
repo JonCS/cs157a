@@ -7,12 +7,14 @@ pandas `pip3 install pandas`<br>
 mysql.connector `pip3 install mysql-connector`<br>
 prettytable `pip3 install prettytable`<br>
 
-Edit files/project1.py and change the database username and password to connect to your local database
+# Running Program: 
+In the files directory, run: python3 project1.py<br>
+Make sure you are using python3
 
-May have to do this if you run into a download error `error at nltk.download() `
+If you run into an error that says you can't connect to your sql database, edit files/project1.py and change the database username and password to connect to your local database
 
-Change directory to the python folder: `cd /Applications/Python 3.6/`
-
+If you run this download error `error at nltk.download() `, do the following:<br>
+Change directory to the python folder: `cd /Applications/Python 3.6/`<br>
 Run the command: `./Install Certificates.command`
 
 # Notes:
