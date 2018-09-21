@@ -1,18 +1,33 @@
-import nltk
-import math
-import pandas as p
-import mysql.connector
-from prettytable import PrettyTable
+import sys
+if sys.version_info < (3,0):
+    print("Please use python 3 to run this program and try again. Thank you!")
+    exit()
+try:
+    import nltk
+    import math
+    import mysql.connector
+    from prettytable import PrettyTable
+    from prettytable import from_db_cursor
+except:
+    print("Please make sure you have all the following libraries installed:")
+    print("nltk, mysql-connector, prettytable")
+    print("Use pip3 to install them")
+    exit()
 
 nltk.download('punkt') # Needs to download thing to use tokenizer function
 
 #Connect to mysql database
 #Update user and uncomment password if you need to
-mydb = mysql.connector.connect(
-  host="localhost",
-  user="root",
-  #passwd="",
-)
+try:
+    mydb = mysql.connector.connect(
+      host="localhost",
+      user="root",
+      #passwd="",
+    )
+except:
+    print("Could not connect to your sql database")
+    print("Please make sure you have it installed and you edited this file with your credentials")
+    exit()
 
 mycursor = mydb.cursor() #Define cursor
 
@@ -26,8 +41,6 @@ mycursor.execute("""CREATE TABLE tfidf_table(
         doc_id int,
         tfidf float);""")
 
-#Define a table for python to print at the end of the program
-table = PrettyTable(["token", "doc_id", "tfifd ratio"])
 
 #Computes TF score, returns a word dictionary for unique tokens in the document with TF Scores
 def computeTF(tokens):
@@ -68,23 +81,35 @@ def insertIntoDB(token, doc_id, tfidf):
     values = (token, doc_id, tfidf)
     mycursor.execute(sql, values)
     mydb.commit()
-    #Add to python printable table
-    table.add_row([token, doc_id, tfidf])
+    
+
+#Prints the sorted SQL table
+def printTable():
+    sql = """SELECT * FROM tfidf_table
+           ORDER BY doc_id ASC, tfidf DESC, token ASC;"""
+    mycursor.execute(sql)
+    myTable = from_db_cursor(mycursor)
+    print(myTable)
 
 # Main
 tfScores = []
 fileTokens = []
 
 print('Running program, please wait...')
+
+#Collect all the tokens
 for x in range(10):
     string = open('Data_%d.txt' % (x + 1), 'r').read() #Get data from one file
     tokens = nltk.word_tokenize(string) #Create tokens, this gives an array
     fileTokens.append(tokens)
     tfScores.append(computeTF(tokens)) #TF Score will act as a word dictionary as well
 
+#Calculate TFIFD score and insert into DB for every token
 for x in range(10):
     for token in tfScores[x]:
         idfScore = computeIDF(token, fileTokens)
         tfidfScore = computeTFIDF((tfScores[x])[token], idfScore)
         insertIntoDB(token, x + 1, tfidfScore)
-print(table)
+
+#Print the Table
+printTable()
