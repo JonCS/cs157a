@@ -40,8 +40,8 @@ nltk.download('punkt') # Needs to download thing to use tokenizer function
 try:
     mydb = mysql.connector.connect(
       host="localhost",
-      user="filip",
-      passwd="Toptierftw123",
+      user="root",
+      #passwd="",
     )
 except:
     print("Could not connect to your sql database")
