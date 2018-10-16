@@ -11,11 +11,13 @@
 
 #IMPORTS
 import sys
+import string
+import re
 
 #CONSTANTS
 DOC_NUM = 55 
 FILENAMES = 'doc'
-TFIDF_POS = 2
+TFIDF_POS = 3
 
 #RUNTIME CHECKS
 if sys.version_info < (3,0):
@@ -56,12 +58,26 @@ mycursor.execute("CREATE DATABASE project1")
 mycursor.execute("USE project1")
 mycursor.execute("DROP TABLE IF EXISTS TFIFD_TABLE")
 mycursor.execute("""CREATE TABLE tfidf_table(
-        token VARCHAR(255),
+        token_id int,
         doc_id int,
+        token VARCHAR(255),
         TFIDF float,
         TF float,
         IDF float);""")
 
+#Might use this later, not used right now.
+def makeAlpha(token):
+    nonCharDict = {} 
+    alphaToken = ""
+    for char in token:
+        if not char.isalpha() and not char.isdigit():
+            if not char in nonCharDict:
+                nonCharDict[char] = 1
+            else:
+                nonCharDict[char] += 1
+        else:
+            alphaToken += char
+    return alphaToken, nonCharDict
 
 #Computes TF score, returns a word dictionary for unique tokens in the document with TF Scores
 def computeTF(tokens):
@@ -70,13 +86,27 @@ def computeTF(tokens):
         if not token in tfDict: #If key doesn't exist, make new key and set to 1
             tfDict[token] = 1
         else: #If key already exists, increment key
-            tfDict[token] = tfDict[token] + 1
+            tfDict[token] += 1
+    
+    #Only update TFScore with calculated TFScore if the key is alphaNumerical
+    alphaNumCount = 0
+    for key in tfDict:
+        if key.isalpha() or key.isdigit():
+            alphaNumCount += 1
     for key in tfDict: #Once all tokens are counted, compute TF score for each token in the document
-        tfDict[key] = tfDict[key] / float(len(tokens))
+        if key.isalpha() or key.isdigit():
+            tfDict[key] = tfDict[key] / float(alphaNumCount)
+        else:
+            tfDict[key] = None
     return tfDict
+
 
 #Computes an IDF score for a particular token in a specific document
 def computeIDF(token, files):
+    #Return none if not alpha
+    if not token.isalpha() and not token.isdigit():
+        return None
+
     idfScore = 0
     fileNum = len(files)
 
@@ -91,23 +121,24 @@ def computeIDF(token, files):
 #Computes final TFIDF score
 def computeTFIDF(tfScore, idfScore):
 
+    #Return none if not alpha
+    if tfScore is None or idfScore is None:
+        return None
     tfidf = tfScore * idfScore
-
     return tfidf
 
 #Inserts data into database, as well as python prettyTable
-def insertIntoDB(token, doc_id, tfidf, tf, idf):
+def insertIntoDB(token, doc_id, token_id, tfidf, tf, idf):
     #Add to the database
-    sql = "INSERT INTO tfidf_table (token, doc_id, TFIDF, TF, IDF) VALUES (%s, %s, %s, %s, %s)"
-    values = (token, doc_id, tfidf, tf, idf)
+    sql = "INSERT INTO tfidf_table (doc_id, token_id, token, TFIDF, TF, IDF) VALUES (%s, %s, %s, %s, %s, %s)"
+    values = (doc_id, token_id, token, tfidf, tf, idf)
     mycursor.execute(sql, values)
-    mydb.commit()
     
 
 #Prints the sorted SQL table
 def printTable(docId):
-    sql = """SELECT token, TFIDF, TF, IDF FROM tfidf_table
-           WHERE doc_id = %s 
+    sql = """SELECT token_id, token, TFIDF, TF, IDF FROM tfidf_table
+           WHERE doc_id = %s AND TFIDF IS NOT NULL 
            ORDER BY TFIDF DESC, token ASC;"""
     values = (docId,)
     mycursor.execute(sql, values)
@@ -126,14 +157,15 @@ def calculateGap():
 
     for x in range(len(result)):
         for y in range(len(result)):
-            if abs(maxGap < result[x][TFIDF_POS] - result[y][TFIDF_POS]):
-                maxGap = abs(result[x][TFIDF_POS] - result[y][TFIDF_POS]) 
-                if(result[x][TFIDF_POS] >= result[y][TFIDF_POS]):
-                    bigToken = result[x]
-                    smallToken = result[y]
-                else:
-                    bigToken = result[y]
-                    smallToken = result[x]
+            if result[x][TFIDF_POS] is not None and result[y][TFIDF_POS] is not None:
+                if abs(maxGap < result[x][TFIDF_POS] - result[y][TFIDF_POS]):
+                    maxGap = abs(result[x][TFIDF_POS] - result[y][TFIDF_POS]) 
+                    if(result[x][TFIDF_POS] >= result[y][TFIDF_POS]):
+                        bigToken = result[x]
+                        smallToken = result[y]
+                    else:
+                        bigToken = result[y]
+                        smallToken = result[x]
 
     print("The max gap was", maxGap)
     print("The big token is", bigToken)
@@ -148,18 +180,22 @@ print('Running program, please wait...')
 
 #Collect all the tokens
 for x in range(DOC_NUM):
-    string = open('%s%d.txt' % (FILENAMES, (x + 1)), 'r').read() #Get data from one file
-    tokens = nltk.word_tokenize(string) #Create tokens, this gives an array
+    documentString = open('%s%d.txt' % (FILENAMES, (x + 1)), 'r').read() #Get data from one file
+    tokens = nltk.word_tokenize(documentString) #Create tokens, this gives an array
     fileTokens.append(tokens)
     tfScores.append(computeTF(tokens)) #TF Score will act as a word dictionary as well
 
 #Calculate TFIFD score and insert into DB for every token
 for x in range(DOC_NUM):
+    token_id = 0
     for token in tfScores[x]:
+        token_id += 1
         tfScore = tfScores[x][token]
         idfScore = computeIDF(token, fileTokens)
         tfidfScore = computeTFIDF((tfScores[x])[token], idfScore)
-        insertIntoDB(token, x + 1, tfidfScore, tfScore, idfScore)
+        insertIntoDB(token, x + 1, token_id, tfidfScore, tfScore, idfScore)
+
+mydb.commit()
 
 #Print a table for each document
 for x in range(DOC_NUM):
