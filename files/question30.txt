@@ -1,0 +1,6 @@
+For the 'Research' department, get its department number & last names of its employees.
+        (> 1 solutions: in, exists, equal join)
+
+        SELECT DNO, LNAME
+        FROM DEPARTMENT, EMPLOYEE
+        WHERE DNUMBER = DNO AND DNAME = 'RESEARCH';

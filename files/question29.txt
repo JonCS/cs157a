@@ -1,0 +1,6 @@
+Get department name of the 'Reorganization' project.
+        (> 1 solutions: in, exists, equal join)
+
+        SELECT DNAME
+        FROM DEPARTMENT, PROJECT
+        WHERE DNUMBER = DNUM AND PNAME = 'REORGANIZATION';

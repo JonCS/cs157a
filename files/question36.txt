@@ -1,0 +1,27 @@
+Get deparment number who has at least one employee working on project number 1 or 2 or 30.
+
+        select dno
+        from employee, works_on
+        where ssn = wssn and pno in (1, 2, 30);
+    
+        select dno
+        from employee
+        where ssn in    (select WSSN
+                     from works_on
+                     where pno in (1, 2, 30));
+    
+        select dno
+        from employee
+        where exists (select *
+                    from works_on
+                    where ssn = WSSN and pno in (1, 2, 30));
+
+        
+        select dnum
+        from project
+        where pnumber in    (select pno
+                         from works_on
+                         where pno in (1, 2, 30));
+
+        Note: 'pno in (1, 2, 30)' can be replaced by 
+             'pno = 1 or pno = 2 or pno = 30'

@@ -1,0 +1,9 @@
+Find social security number and last name of the employee who has the highest salary in his/her department.
+        (> 1 solutions: exists, =)
+
+        select ssn, lname
+        from employee e1
+        where salary =  (select max(salary)
+                     from employee e2
+                     where e1.dno = e2.dno);
+

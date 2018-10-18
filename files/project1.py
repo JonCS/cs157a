@@ -15,8 +15,9 @@ import string
 import re
 
 #CONSTANTS
-DOC_NUM = 55 
-FILENAMES = 'doc'
+DOC_START = 22 
+DOC_END = 42
+FILENAMES = 'question'
 TFIDF_POS = 3
 
 #RUNTIME CHECKS
@@ -43,7 +44,7 @@ try:
     mydb = mysql.connector.connect(
       host="localhost",
       user="root",
-      #passwd="",
+      passwd="Toptierftw123",
     )
 except:
     print("Could not connect to your sql database")
@@ -89,13 +90,13 @@ def computeTF(tokens):
             tfDict[token] += 1
     
     #Only update TFScore with calculated TFScore if the key is alphaNumerical
-    alphaNumCount = 0
+    wordTokenCount = 0
     for key in tfDict:
-        if key.isalpha() or key.isdigit():
-            alphaNumCount += 1
+        if key.isalpha():
+            wordTokenCount += 1
     for key in tfDict: #Once all tokens are counted, compute TF score for each token in the document
-        if key.isalpha() or key.isdigit():
-            tfDict[key] = tfDict[key] / float(alphaNumCount)
+        if key.isalpha():
+            tfDict[key] = tfDict[key] / float(wordTokenCount)
         else:
             tfDict[key] = None
     return tfDict
@@ -171,7 +172,23 @@ def calculateGap():
     print("The big token is", bigToken)
     print("The small token is", smallToken)
 
-
+def removePunctuation(token):
+    newToken = ""
+    punctuation = []
+    if(not token[0].isalpha() and not token[0].isdigit()):
+        newToken = token[1:] #Delete first character
+        punctuation.insert(0, token[0])
+        if(not newToken[-1].isalpha() and not newToken[-1].isdigit()):
+            newToken = newToken[0:-1] #last character is excluded
+            punctuation.insert(1, newToken[-1])
+    if newToken == "":
+        #print(token)
+        #print(token)
+        return token, punctuation
+    else:
+        #print(token)
+        #print(newToken)
+        return newToken, punctuation
 # Main
 tfScores = []
 fileTokens = []
@@ -179,26 +196,33 @@ fileTokens = []
 print('Running program, please wait...')
 
 #Collect all the tokens
-for x in range(DOC_NUM):
+for x in range(DOC_START - 1, DOC_END):
     documentString = open('%s%d.txt' % (FILENAMES, (x + 1)), 'r').read() #Get data from one file
-    tokens = nltk.word_tokenize(documentString) #Create tokens, this gives an array
+    tokens = nltk.wordpunct_tokenize(documentString) #Create tokens, this gives an array
+    extraPunctuation = []
+    #for token in tokens:
+        #if not token.isalnum() and len(token) > 1:
+            #newToken, punctuation = removePunctuation(token)
+            #token = newToken
+            #extraPunctuation.extend(punctuation)
+    #tokens.extend(extraPunctuation)
     fileTokens.append(tokens)
     tfScores.append(computeTF(tokens)) #TF Score will act as a word dictionary as well
 
 #Calculate TFIFD score and insert into DB for every token
-for x in range(DOC_NUM):
+for x in range(DOC_END - DOC_START + 1):
     token_id = 0
     for token in tfScores[x]:
         token_id += 1
         tfScore = tfScores[x][token]
         idfScore = computeIDF(token, fileTokens)
         tfidfScore = computeTFIDF((tfScores[x])[token], idfScore)
-        insertIntoDB(token, x + 1, token_id, tfidfScore, tfScore, idfScore)
+        insertIntoDB(token, DOC_START + x, token_id, tfidfScore, tfScore, idfScore)
 
 mydb.commit()
 
 #Print a table for each document
-for x in range(DOC_NUM):
-    printTable(x + 1)
+for x in range(DOC_START, DOC_END + 1):
+    printTable(x)
 
 calculateGap()

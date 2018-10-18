@@ -1,0 +1,13 @@
+Get first & last name of each employee who has a dependent with the same first name as the employee.
+        ( > 1 solutions: exists, in, equal join)
+
+        select fname, lname
+        from employee
+        where ssn in    (select depssn
+                     from dependent
+                            where depssn = ssn 
+                     and fname = dependent_name);
+    
+        select fname, lname
+        from employee, dependent
+        where ssn = depssn and fname = dependent_name;

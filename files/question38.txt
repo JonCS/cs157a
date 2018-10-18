@@ -1,0 +1,7 @@
+Get the social security number of all employees who work on 3 or more projects.
+
+        select ssn
+        from employee
+        where (select count(*)
+              from works_on
+              where ssn = wssn) >= 3;
