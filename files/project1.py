@@ -15,9 +15,9 @@ import string
 import re
 
 #CONSTANTS
-DOC_START = 22 
-DOC_END = 42
-FILENAMES = 'question'
+DOC_START = 1 
+DOC_END = 55
+FILENAMES = 'doc'
 TFIDF_POS = 3
 
 #RUNTIME CHECKS
@@ -44,7 +44,7 @@ try:
     mydb = mysql.connector.connect(
       host="localhost",
       user="root",
-      passwd="Toptierftw123",
+      #passwd="",
     )
 except:
     print("Could not connect to your sql database")
@@ -206,6 +206,7 @@ for x in range(DOC_START - 1, DOC_END):
             #token = newToken
             #extraPunctuation.extend(punctuation)
     #tokens.extend(extraPunctuation)
+    #print(tokens)
     fileTokens.append(tokens)
     tfScores.append(computeTF(tokens)) #TF Score will act as a word dictionary as well
 
@@ -220,7 +221,6 @@ for x in range(DOC_END - DOC_START + 1):
         insertIntoDB(token, DOC_START + x, token_id, tfidfScore, tfScore, idfScore)
 
 mydb.commit()
-
 #Print a table for each document
 for x in range(DOC_START, DOC_END + 1):
     printTable(x)
