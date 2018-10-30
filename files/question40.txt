@@ -1,0 +1,8 @@
+Decrease 5 hours per week from each project that Joyce  English works on. 
+
+        update works_on
+        SET HOURS = HOURS - 5
+         WHERE WSSN =  (SELECT SSN
+                    FROM EMPLOYEE
+                    WHERE FNAME = 'JOYCE' 
+                    AND LNAME = 'ENGLISH');

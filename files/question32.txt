@@ -1,0 +1,6 @@
+Get department name & the average salary of all employees in each department.
+
+        select dname, avg(salary)
+        from department, employee
+        where dnumber = dno
+        group by dname;

@@ -1,0 +1,3 @@
+Get department name of the 'Reorganization' project.
+		(> 1 solutions: in, exists, equal join)
+

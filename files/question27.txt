@@ -1,0 +1,5 @@
+Get first & last name of the manager in the Research department. ( > 1 solutions: exists, in, equal join)
+
+        SELECT FNAME, LNAME
+        FROM    EMPLOYEE, DEPARTMENT
+        WHERE SSN = MGRSSN AND DNAME = 'RESEARCH';

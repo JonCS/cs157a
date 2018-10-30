@@ -1,0 +1,20 @@
+Get the first & last names of employees who work for 20
+          hours per week or more on project number less than 15.
+    (use “in”  “exists”  join)
+        select fname, lname
+        from employee
+        where ssn in (select wssn
+                    from works_on
+                        where pno < 15 and hours >= 20);
+    OR
+        select fname, lname
+        from employee
+        where exists (select *
+                    from works_on
+                    where ssn = wssn and pno < 15
+                         and hours >= 20);
+
+    OR
+            select fname, lname
+            from employee, works_on
+            where ssn = wssn and pno < 15 and hours >= 20;

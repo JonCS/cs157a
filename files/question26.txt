@@ -1,0 +1,6 @@
+Get name of each department which has a location in Houston. ( > 1 solutions: exists, in, equal join)
+
+        SELECT DEPARTMENT.DNAME
+        FROM   DEPARTMENT, DEPT_LOCATION
+        WHERE  DEPARTMENT.DNUMBER = DEPT_LOCATION.DNUMBER
+        AND    DLOCATION = 'HOUSTON';

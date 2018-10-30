@@ -1,0 +1,9 @@
+Remove John Smith's spouse from the dependent list. 
+
+        delete
+                 FROM DEPENDENT
+        WHERE RELATIONSHIP = 'SPOUSE' AND
+              DEPSSN = (SELECT SSN
+                   FROM EMPLOYEE
+                   WHERE FNAME = 'JOHN' AND LNAME = 'SMITH');
+

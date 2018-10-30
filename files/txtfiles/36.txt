@@ -1,0 +1,4 @@
+select dno
+		from employee, works_on
+		where ssn = wssn and pno in (1, 2, 30);
+

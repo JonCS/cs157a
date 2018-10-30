@@ -1,0 +1,21 @@
+Get last name of each employee who does not work on
+          project #1. Assume every employee works on at least
+        one project.
+
+        select lname
+        from employee
+        where not exists
+            (select *
+             from works_on
+             where wssn = ssn and pno = 1);
+    
+        select lname
+        from employee
+        where ssn not in    (select wssn
+                             from works_on
+                             where pno = 1);
+
+    
+            select lname
+            from employee, works_on
+            where pno <> 1 and ssn = wssn;
