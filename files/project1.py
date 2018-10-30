@@ -16,8 +16,8 @@ import re
 
 #CONSTANTS
 DOC_START = 1 
-DOC_END = 1
-FILENAMES = 'doc'
+DOC_END = 55
+FILENAMES = 'doc'   
 TFIDF_POS = 3
 
 #RUNTIME CHECKS
@@ -84,10 +84,10 @@ def makeAlpha(token):
 def computeTF(tokens):
     tfDict = {}
     for token in tokens: # Loop through all tokens
-        if not token.lower() in tfDict: #If key doesn't exist, make new key and set to 1
-            tfDict[token.lower()] = 1
+        if not token['token'].lower() in tfDict: #If key doesn't exist, make new key and set to 1
+            tfDict[token['token'].lower()] = 1
         else: #If key already exists, increment key
-            tfDict[token.lower()] += 1
+            tfDict[token['token'].lower()] += 1
     
     #Only update TFScore with calculated TFScore if the key is alphaNumerical
     wordTokenCount = 0
@@ -106,18 +106,18 @@ def computeTF(tokens):
 #Computes an IDF score for a particular token in a specific document
 def computeIDF(token, files):
     #Return none if not alpha
-    if not token.isalpha() and not token.isdigit():
+    if not token.isalpha():
         return None
 
     idfScore = 0
     fileNum = len(files)
 
     for doc in files:
-        if (token.lower()) in doc:
-            idfScore += 1
+        for docToken in doc:
+            if docToken['token'].lower() == token.lower():
+                idfScore += 1
 
     idfScore = math.log(fileNum / float(idfScore))
-
     return idfScore
 
 #Computes final TFIDF score
@@ -170,15 +170,9 @@ def calculateGap():
                 keywordStopIndex = x + 1
 
 
-    valueGap = 0
-    for x in range(0, len(result)):
-        for y in range(len(result)):
-            if valueGap < abs(result[x][TFIDF_POS] - result[y][TFIDF_POS]):
-                valueGap = abs(result[x][TFIDF_POS] - result[y][TFIDF_POS])
-
-
-    print("Value gap is:", valueGap)
     print("The biggest gap in TFIDF value is:", maxGap)
+    print("TFIDF value for bigger one is:", bigToken[TFIDF_POS])
+    print("TFIDF value for smaller one is:", smallToken[TFIDF_POS])
     for x in range(keywordStopIndex):
         print("This is a keyword:", result[x][2])
 
@@ -201,24 +195,25 @@ def removePunctuation(token):
         return newToken, punctuation
 
 def tokenizeString(documentString):
+    newWord = ""
     tokens = []
     newToken = {}
     tokenId = 1
     for char in documentString:
         if (char >= 'A' and char <= 'Z') or (char >= 'a' and char <= 'z'):
-            if not token in newToken:
-                newToken[token] = ''
-            newToken[token] = (newToken[token]) + char
-            newToken[tokenId] = tokenId
+            newWord += char
         else:
-            if token in newToken and len(newToken[token]) > 0:
-                newToken[tokenId] = tokenId
+            if len(newWord) > 0:
+                newToken['token'] = newWord
+                newToken['tokenId'] = tokenId
             else:
-                newToken[token] = char
-                newToken[tokenId] = tokenId
+                newToken['token'] = char
+                newToken['tokenId'] = tokenId
             tokenId += 1
             tokens.append(newToken)
             newToken = {}
+            newWord = ""
+
     return tokens
 # Main
 tfScores = []
@@ -228,17 +223,8 @@ print('Running program, please wait...')
 
 #Collect all the tokens
 for x in range(DOC_START - 1, DOC_END):
-    #documentString = open('%s%d.txt' % (FILENAMES, (x + 1)), 'r').read() #Get data from one file
-    documentString = open('TT20', 'r').read() #Get data from one file
-    tokens = nltk.wordpunct_tokenize(documentString) #Create tokens, this gives an array
-
-    extraPunctuation = []
-    i = 0
-    for token in tokens:
-        tokens[i] = token.lower()
-        i += 1
-    result = tokenizeString(documentString)
-    print(result)
+    documentString = open('%s%d.txt' % (FILENAMES, (x + 1)), 'r').read() #Get data from one file
+    tokens = tokenizeString(documentString)
     fileTokens.append(tokens)
     tfScores.append(computeTF(tokens)) #TF Score will act as a word dictionary as well
 
@@ -254,7 +240,7 @@ for x in range(DOC_END - DOC_START + 1):
 
 mydb.commit()
 #Print a table for each document
-#for x in range(DOC_START, DOC_END + 1):
-    #printTable(x)
+for x in range(DOC_START, DOC_END + 1):
+    printTable(x)
 
-#calculateGap()
+calculateGap()
