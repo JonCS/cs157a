@@ -16,8 +16,9 @@ import re
 
 #CONSTANTS
 DOC_START = 1 
-DOC_END = 55
+DOC_END = 5 
 FILENAMES = 'doc'   
+FILENAME = '1.txt'
 TFIDF_POS = 3
 
 #RUNTIME CHECKS
@@ -65,6 +66,11 @@ mycursor.execute("""CREATE TABLE tfidf_table(
         TFIDF float,
         TF float,
         IDF float);""")
+
+def splitDocument(document):
+    documentArray = document.split('. ')
+    #print(documentArray)
+    return documentArray
 
 #Might use this later, not used right now.
 def makeAlpha(token):
@@ -117,7 +123,7 @@ def computeIDF(token, files):
             if docToken['token'].lower() == token.lower():
                 idfScore += 1
 
-    idfScore = math.log(fileNum / float(idfScore))
+    idfScore = math.log10(fileNum / float(idfScore))
     return idfScore
 
 #Computes final TFIDF score
@@ -139,7 +145,7 @@ def insertIntoDB(token, doc_id, token_id, tfidf, tf, idf):
 
 #Prints the sorted SQL table
 def printTable(docId):
-    sql = """SELECT token_id, token, TFIDF, TF, IDF FROM tfidf_table
+    sql = """SELECT doc_id, token_id, token, TFIDF, TF, IDF FROM tfidf_table
            WHERE doc_id = %s AND TFIDF IS NOT NULL 
            ORDER BY TFIDF DESC, token ASC;"""
     values = (docId,)
@@ -171,10 +177,64 @@ def calculateGap():
 
 
     print("The biggest gap in TFIDF value is:", maxGap)
-    print("TFIDF value for bigger one is:", bigToken[TFIDF_POS])
-    print("TFIDF value for smaller one is:", smallToken[TFIDF_POS])
+    print("TFIDF value for bigger one, which is %s, is:" % (bigToken[2]), bigToken[TFIDF_POS])
+    print("TFIDF value for smaller one, which is %s, is:" % (smallToken[2]), smallToken[TFIDF_POS])
+    keywords = []
     for x in range(keywordStopIndex):
         print("This is a keyword:", result[x][2])
+        keywords.append(result[x][2])
+    return keywords
+
+def calculateGapInDocument(docId):
+    print(docId)
+    maxGap = 0
+    sql = """SELECT * FROM tfidf_table
+             WHERE TFIDF IS NOT NULL
+             AND doc_id = %s
+             ORDER BY TFIDF DESC;"""
+    values = (docId,)
+    mycursor.execute(sql, values)
+    result = mycursor.fetchall()
+    tableKeywords = []
+    keywordStopIndex = 0
+    bigToken = None
+    print(len(result))
+    if(len(result) > 0):
+        gapValues = []
+        bigToken = result[0]
+        smallToken = result[0]
+
+        for x in range(0, len(result), 1):
+            if (x+1) != len(result):
+                gapValues.append((abs(result[x][TFIDF_POS] - result[x + 1][TFIDF_POS])))
+                if maxGap < abs(result[x][TFIDF_POS] - result[x + 1][TFIDF_POS]):
+                    maxGap = abs(result[x][TFIDF_POS] - result[x + 1][TFIDF_POS]) 
+                    bigToken = result[x]
+                    smallToken = result[x + 1]
+                    keywordStopIndex = x + 1
+
+
+        print("The biggest gap in TFIDF value is:", maxGap)
+        print("TFIDF value for bigger one is:", bigToken[TFIDF_POS])
+        print("TFIDF value for smaller one is:", smallToken[TFIDF_POS])
+        for x in range(keywordStopIndex):
+            print("This is a keyword:", result[x][2])
+            tableKeywords.append(result[x][2])
+    else:
+        tableKeywords = None
+        
+    sql = """ DELETE from tfidf_table
+              WHERE doc_id = %s
+              AND (TFIDF < %s OR TFIDF IS NULL);"""
+    if bigToken is not None:
+        values = (docId, bigToken[TFIDF_POS])
+        print("big token was not none and here is the tfidf: %s" % (bigToken[TFIDF_POS]))
+    else:
+        values = (docId, 0) #Any value is fine
+        print("Big token was none")
+    mycursor.execute(sql, values)
+
+    return tableKeywords
 
 def removePunctuation(token):
     newToken = ""
@@ -215,32 +275,76 @@ def tokenizeString(documentString):
             newWord = ""
 
     return tokens
+
+def make2ConceptTable(keywords, doc_Num):
+
+    mycursor.execute("DROP TABLE IF EXISTS 2Concept_table")
+    mycursor.execute("""CREATE TABLE 2Concept_table(
+        concept VARCHAR(255),
+        doc_id int,
+        hasConcept int);""")
+
+    conceptMap = {}
+    for y in range(len(keywords)):
+        for z in range(len(keywords)):
+            if(y != z):
+                newConcept = keywords[y] + '-' + keywords[z]
+                if not newConcept in conceptMap:
+                    conceptMap[newConcept] = newConcept
+                    for doc in range(doc_Num):
+                        sql = """SELECT COUNT(token) FROM tfidf_table
+                                 WHERE doc_id = %s AND (token = %s OR token = %s);"""
+                        values = (doc + 1, keywords[y], keywords[z])
+                        mycursor.execute(sql, values)
+                        count = mycursor.fetchall()
+                        if count[0][0] == 2:
+                            sql = "INSERT INTO 2Concept_table (concept, doc_id, hasConcept) VALUES (%s, %s, %s);"
+                            values = (newConcept, doc + 1, 1)
+                            mycursor.execute(sql,values)
+                        else:
+                            sql = "INSERT INTO 2Concept_table (concept, doc_id, hasConcept) VALUES (%s, %s, %s);"
+                            values = (newConcept, doc + 1, 0)
+                            mycursor.execute(sql,values)
+    mydb.commit()
 # Main
 tfScores = []
 fileTokens = []
 
 print('Running program, please wait...')
+# Divide Document into substring
+documentString = open(FILENAME, 'r').read() #Get data from one file
+documentArray = splitDocument(documentString)
+
 
 #Collect all the tokens
-for x in range(DOC_START - 1, DOC_END):
-    documentString = open('%s%d.txt' % (FILENAMES, (x + 1)), 'r').read() #Get data from one file
-    tokens = tokenizeString(documentString)
+for x in range(len(documentArray)):
+    tokens = tokenizeString(documentArray[x])
     fileTokens.append(tokens)
     tfScores.append(computeTF(tokens)) #TF Score will act as a word dictionary as well
 
 #Calculate TFIFD score and insert into DB for every token
-for x in range(DOC_END - DOC_START + 1):
+for x in range(len(documentArray)):
     token_id = 0
     for token in tfScores[x]:
         token_id += 1
         tfScore = tfScores[x][token]
         idfScore = computeIDF(token, fileTokens)
         tfidfScore = computeTFIDF((tfScores[x])[token], idfScore)
-        insertIntoDB(token, DOC_START + x, token_id, tfidfScore, tfScore, idfScore)
+        insertIntoDB(token, x + 1, token_id, tfidfScore, tfScore, idfScore)
 
 mydb.commit()
 #Print a table for each document
-for x in range(DOC_START, DOC_END + 1):
-    printTable(x)
 
-calculateGap()
+print("Length of array was : ", len(documentArray))
+keywords = calculateGap()
+print(keywords)
+
+#for x in range(len(documentArray)):
+#    docKeywords = calculateGapInDocument(x + 1) 
+#    if docKeywords is not None:
+#        for y in range (len(docKeywords)):
+#            if not docKeywords[y] in keywords:
+#                keywords[docKeywords[y]] = docKeywords[y]
+#    printTable(x + 1)
+
+make2ConceptTable(keywords, len(documentArray))
