@@ -16,10 +16,12 @@ import re
 
 #CONSTANTS
 DOC_START = 1 
-DOC_END = 5 
-FILENAMES = 'doc'   
+DOC_END = 3 
+FILENAMES = 'newDocs'   
 FILENAME = '1.txt'
 TFIDF_POS = 3
+
+encoding = 'unicode_escape'
 
 #RUNTIME CHECKS
 if sys.version_info < (3,0):
@@ -68,6 +70,7 @@ mycursor.execute("""CREATE TABLE tfidf_table(
         IDF float);""")
 
 def splitDocument(document):
+    #print("I am inside splitDocument") 
     documentArray = document.split('. ')
     #print(documentArray)
     return documentArray
@@ -181,8 +184,14 @@ def calculateGap():
     print("TFIDF value for smaller one, which is %s, is:" % (smallToken[2]), smallToken[TFIDF_POS])
     keywords = []
     for x in range(keywordStopIndex):
-        print("This is a keyword:", result[x][2])
-        keywords.append(result[x][2])
+        flag = True
+        for keyword in keywords:
+            if(result[x][2] == keyword):
+                flag = False
+                break;
+        if flag:
+            print("This is a keyword:", result[x][2])
+            keywords.append(result[x][2])
     return keywords
 
 def calculateGapInDocument(docId):
@@ -306,31 +315,62 @@ def make2ConceptTable(keywords, doc_Num):
                             values = (newConcept, doc + 1, 0)
                             mycursor.execute(sql,values)
     mydb.commit()
+
+def makeBinaryTable(keywords, doc_Num):
+    columns = []
+    for keyword in keywords:
+        columns.append(keyword + ' int DEFAULT 0')
+    mycursor.execute("DROP TABLE IF EXISTS binary_table")
+    sql = 'CREATE TABLE binary_table (doc_id int,' + ', '.join(columns) + ',PRIMARY KEY (doc_id));'
+    mycursor.execute(sql)
+
+    for doc in range(doc_Num):
+        sql = """INSERT INTO binary_table (doc_id) VALUES (%s);"""
+        mycursor.execute(sql, (doc + 1,))
+
+    for keyword in keywords:
+        sql = "SELECT doc_id from tfidf_table where token = %s"
+        values = (keyword,)
+        mycursor.execute(sql, values)
+        ids = mycursor.fetchall()
+        for id in ids:
+            sql = "UPDATE binary_table SET %s=1 where doc_id=%s" % (keyword, id[0])
+            mycursor.execute(sql)
+
+    mydb.commit()
+
+
 # Main
+#testWords = ['test1', 'test2', 'test3', 'test4', 'test5']
+#makeBinaryTable(testWords, 0)
 tfScores = []
 fileTokens = []
 
+documentArray = []
+
 print('Running program, please wait...')
 # Divide Document into substring
-documentString = open(FILENAME, 'r').read() #Get data from one file
-documentArray = splitDocument(documentString)
+for x in range(DOC_START, DOC_END + 1):
+    documentString = open('newDocs%d.txt' % (x), encoding='windows-1252').read() #Get data from one file
+    documentArray.extend(splitDocument(documentString))
 
 
+print("Length of document array is %d" % (len(documentArray)))
 #Collect all the tokens
-for x in range(len(documentArray)):
-    tokens = tokenizeString(documentArray[x])
+for y in range(len(documentArray)):
+    tokens = tokenizeString(documentArray[y])
     fileTokens.append(tokens)
     tfScores.append(computeTF(tokens)) #TF Score will act as a word dictionary as well
 
 #Calculate TFIFD score and insert into DB for every token
-for x in range(len(documentArray)):
+for z in range(len(documentArray)):
     token_id = 0
-    for token in tfScores[x]:
+    for token in tfScores[z]:
         token_id += 1
-        tfScore = tfScores[x][token]
+        tfScore = tfScores[z][token]
         idfScore = computeIDF(token, fileTokens)
-        tfidfScore = computeTFIDF((tfScores[x])[token], idfScore)
-        insertIntoDB(token, x + 1, token_id, tfidfScore, tfScore, idfScore)
+        tfidfScore = computeTFIDF((tfScores[z])[token], idfScore)
+        insertIntoDB(token, z + 1, token_id, tfidfScore, tfScore, idfScore)
 
 mydb.commit()
 #Print a table for each document
@@ -347,4 +387,6 @@ print(keywords)
 #                keywords[docKeywords[y]] = docKeywords[y]
 #    printTable(x + 1)
 
-make2ConceptTable(keywords, len(documentArray))
+#make2ConceptTable(keywords, len(documentArray))
+
+makeBinaryTable(keywords, len(documentArray))
