@@ -341,8 +341,6 @@ def makeBinaryTable(keywords, doc_Num):
 
 
 # Main
-#testWords = ['test1', 'test2', 'test3', 'test4', 'test5']
-#makeBinaryTable(testWords, 0)
 tfScores = []
 fileTokens = []
 
@@ -378,15 +376,5 @@ mydb.commit()
 print("Length of array was : ", len(documentArray))
 keywords = calculateGap()
 print(keywords)
-
-#for x in range(len(documentArray)):
-#    docKeywords = calculateGapInDocument(x + 1) 
-#    if docKeywords is not None:
-#        for y in range (len(docKeywords)):
-#            if not docKeywords[y] in keywords:
-#                keywords[docKeywords[y]] = docKeywords[y]
-#    printTable(x + 1)
-
-#make2ConceptTable(keywords, len(documentArray))
 
 makeBinaryTable(keywords, len(documentArray))
