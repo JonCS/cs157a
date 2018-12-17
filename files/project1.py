@@ -394,6 +394,7 @@ two_concepts = make2ConceptTable(keywords, len(documentArray))
 print("\nThe 2 concepts are: ")
 print(two_concepts)
 
-print2ConceptLocations(two_concepts, len(documentArray), files)
 
-print2ConceptTable()
+if(two_concepts and len(two_concepts) > 0):
+    print2ConceptLocations(two_concepts, len(documentArray), files)
+    print2ConceptTable()
