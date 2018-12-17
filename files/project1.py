@@ -44,16 +44,20 @@ nltk.download('punkt') # Needs to download thing to use tokenizer function
 
 #Connect to mysql database
 #Update user and uncomment password if you need to
+
+print("\nMake sure you have mysql installed on localhost.")
+username = input("Enter your sql username: ")
+password = input("Enter your sql password: ")
 config = {
     'host':'localhost',
-    'user':"filip",
-    'passwd':'',
+    'user':username,
+    'passwd':password,
 }
 try:
     mydb = mysql.connector.connect(**config)
 except mysql.connector.Error as err:
     print("Could not connect to your sql database")
-    print("Please make sure you have it installed and you edited this file with your credentials")
+    print("Please make sure you have it installed and you entered the right credentials")
     exit()
 
 mycursor = mydb.cursor() #Define cursor
