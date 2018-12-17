@@ -1,12 +1,12 @@
 #HOW TO RUN THIS PROGRAM
 '''
-1. Put the documents into the same directory as this program with a filename structure such as 'docName+Num.txt'
-   For example, if you choose to have the base filename be doc, then document 1 will have the name 'doc1.txt'
-   document 2 will have the name 'doc2.txt'.
+1. Edit the sql database strings for user and passwd with the same values that are used for your sql instance on your localhost
 
-2. Edit the constants in the CONSTANTS section to match the name of the documents + the number of documents
+2. Run pip3 install nltk pandas mysql-connector prettytable
 
-3. Edit the sql database strings for user and passwd with the same values that are used for your sql instance on your localhost
+3. Run python3 project1.py [FILES]
+
+[FILES] is all the files you would like the program run through
 '''
 
 #IMPORTS
@@ -16,7 +16,7 @@ import re
 
 #CONSTANTS
 DOC_START = 1 
-DOC_END = 3 
+DOC_END = 1 
 FILENAMES = 'newDocs'   
 FILENAME = '1.txt'
 TFIDF_POS = 3
@@ -33,6 +33,7 @@ try:
     import mysql.connector
     from prettytable import PrettyTable
     from prettytable import from_db_cursor
+    from mysql.connector import errorcode
 except:
     print("Please make sure you have all the following libraries installed:")
     print("nltk, mysql-connector, prettytable")
@@ -43,13 +44,14 @@ nltk.download('punkt') # Needs to download thing to use tokenizer function
 
 #Connect to mysql database
 #Update user and uncomment password if you need to
+config = {
+    'host':'localhost',
+    'user':"filip",
+    'passwd':'',
+}
 try:
-    mydb = mysql.connector.connect(
-      host="localhost",
-      user="root",
-      #passwd="",
-    )
-except:
+    mydb = mysql.connector.connect(**config)
+except mysql.connector.Error as err:
     print("Could not connect to your sql database")
     print("Please make sure you have it installed and you edited this file with your credentials")
     exit()
@@ -70,9 +72,7 @@ mycursor.execute("""CREATE TABLE tfidf_table(
         IDF float);""")
 
 def splitDocument(document):
-    #print("I am inside splitDocument") 
     documentArray = document.split('. ')
-    #print(documentArray)
     return documentArray
 
 #Might use this later, not used right now.
@@ -125,6 +125,7 @@ def computeIDF(token, files):
         for docToken in doc:
             if docToken['token'].lower() == token.lower():
                 idfScore += 1
+                break
 
     idfScore = math.log10(fileNum / float(idfScore))
     return idfScore
@@ -157,6 +158,14 @@ def printTable(docId):
     print("Printing table for document number", docId)
     print(myTable)
 
+def print2ConceptTable():
+    sql = """SELECT * FROM 2Concept_table"""
+    mycursor.execute(sql)
+    myTable= from_db_cursor(mycursor)
+    print("\nThis is the 2 Concept Table\n")
+    print(myTable)
+
+#Calculates the gap to find keywords
 def calculateGap():
     maxGap = 0
     sql = """SELECT * FROM tfidf_table
@@ -183,67 +192,17 @@ def calculateGap():
     print("TFIDF value for bigger one, which is %s, is:" % (bigToken[2]), bigToken[TFIDF_POS])
     print("TFIDF value for smaller one, which is %s, is:" % (smallToken[2]), smallToken[TFIDF_POS])
     keywords = []
-    for x in range(keywordStopIndex):
+    keywordStop = min(keywordStopIndex, 45) #Limit to 45 keywords so that we can always make a 2Concept table
+    for x in range(keywordStop):
         flag = True
         for keyword in keywords:
             if(result[x][2] == keyword):
                 flag = False
                 break;
         if flag:
-            print("This is a keyword:", result[x][2])
+            #print("This is a keyword:", result[x][2])
             keywords.append(result[x][2])
     return keywords
-
-def calculateGapInDocument(docId):
-    print(docId)
-    maxGap = 0
-    sql = """SELECT * FROM tfidf_table
-             WHERE TFIDF IS NOT NULL
-             AND doc_id = %s
-             ORDER BY TFIDF DESC;"""
-    values = (docId,)
-    mycursor.execute(sql, values)
-    result = mycursor.fetchall()
-    tableKeywords = []
-    keywordStopIndex = 0
-    bigToken = None
-    print(len(result))
-    if(len(result) > 0):
-        gapValues = []
-        bigToken = result[0]
-        smallToken = result[0]
-
-        for x in range(0, len(result), 1):
-            if (x+1) != len(result):
-                gapValues.append((abs(result[x][TFIDF_POS] - result[x + 1][TFIDF_POS])))
-                if maxGap < abs(result[x][TFIDF_POS] - result[x + 1][TFIDF_POS]):
-                    maxGap = abs(result[x][TFIDF_POS] - result[x + 1][TFIDF_POS]) 
-                    bigToken = result[x]
-                    smallToken = result[x + 1]
-                    keywordStopIndex = x + 1
-
-
-        print("The biggest gap in TFIDF value is:", maxGap)
-        print("TFIDF value for bigger one is:", bigToken[TFIDF_POS])
-        print("TFIDF value for smaller one is:", smallToken[TFIDF_POS])
-        for x in range(keywordStopIndex):
-            print("This is a keyword:", result[x][2])
-            tableKeywords.append(result[x][2])
-    else:
-        tableKeywords = None
-        
-    sql = """ DELETE from tfidf_table
-              WHERE doc_id = %s
-              AND (TFIDF < %s OR TFIDF IS NULL);"""
-    if bigToken is not None:
-        values = (docId, bigToken[TFIDF_POS])
-        print("big token was not none and here is the tfidf: %s" % (bigToken[TFIDF_POS]))
-    else:
-        values = (docId, 0) #Any value is fine
-        print("Big token was none")
-    mycursor.execute(sql, values)
-
-    return tableKeywords
 
 def removePunctuation(token):
     newToken = ""
@@ -255,14 +214,11 @@ def removePunctuation(token):
             newToken = newToken[0:-1] #last character is excluded
             punctuation.insert(1, newToken[-1])
     if newToken == "":
-        #print(token)
-        #print(token)
         return token, punctuation
     else:
-        #print(token)
-        #print(newToken)
         return newToken, punctuation
 
+#Tokenize the document
 def tokenizeString(documentString):
     newWord = ""
     tokens = []
@@ -288,38 +244,64 @@ def tokenizeString(documentString):
 def make2ConceptTable(keywords, doc_Num):
 
     mycursor.execute("DROP TABLE IF EXISTS 2Concept_table")
-    mycursor.execute("""CREATE TABLE 2Concept_table(
-        concept VARCHAR(255),
-        doc_id int,
-        hasConcept int);""")
-
-    conceptMap = {}
+    concepts = []
     for y in range(len(keywords)):
-        for z in range(len(keywords)):
-            if(y != z):
-                newConcept = keywords[y] + '-' + keywords[z]
-                if not newConcept in conceptMap:
-                    conceptMap[newConcept] = newConcept
-                    for doc in range(doc_Num):
-                        sql = """SELECT COUNT(token) FROM tfidf_table
-                                 WHERE doc_id = %s AND (token = %s OR token = %s);"""
-                        values = (doc + 1, keywords[y], keywords[z])
-                        mycursor.execute(sql, values)
-                        count = mycursor.fetchall()
-                        if count[0][0] == 2:
-                            sql = "INSERT INTO 2Concept_table (concept, doc_id, hasConcept) VALUES (%s, %s, %s);"
-                            values = (newConcept, doc + 1, 1)
-                            mycursor.execute(sql,values)
-                        else:
-                            sql = "INSERT INTO 2Concept_table (concept, doc_id, hasConcept) VALUES (%s, %s, %s);"
-                            values = (newConcept, doc + 1, 0)
-                            mycursor.execute(sql,values)
-    mydb.commit()
+        for z in range(y, len(keywords)):
+            if(y != z and len(concepts) < 1000):
+                newConcept = keywords[y] + '_' + keywords[z]
+                concepts.append(newConcept)
 
+    columns = []
+    for i in range(len(concepts)):
+        columns.append(concepts[i] + ' int DEFAULT 0')
+
+    if len(columns) == 0:
+        print("Could not make 2Concept Table because there was only one keyword")
+        return
+
+    sql = 'CREATE TABLE 2Concept_table (doc_id int,' + ', '.join(columns) + ',PRIMARY KEY (doc_id));'
+    mycursor.execute(sql)
+
+    for doc in range(doc_Num):
+        sql = """INSERT INTO 2Concept_table (doc_id) VALUES (%s);"""
+        mycursor.execute(sql, (doc + 1,))
+
+
+    for i in range(len(concepts)):
+        sql = """SELECT DISTINCT doc_id FROM tfidf_table
+                 WHERE token = %s OR token = %s;"""
+        splitWord = concepts[i].split('_')
+        values = (splitWord[0], splitWord[1])
+        mycursor.execute(sql, values)
+        ids = mycursor.fetchall()
+        for anId in ids:
+            sql = """SELECT COUNT(token) from tfidf_table where doc_id=%s
+                     AND token IN (%s, %s)"""                  
+            values = (anId[0], splitWord[0], splitWord[1])
+            mycursor.execute(sql, values)
+            count = mycursor.fetchall()
+            if(count[0][0] > 1):
+                sql = "UPDATE 2Concept_table SET %s=1 where doc_id=%s" % (concepts[i], anId[0])
+                mycursor.execute(sql)
+
+    mydb.commit()
+    return concepts
+
+#Prints out Where the 2Concepts are located
+def print2ConceptLocations(concepts, doc_Num, files):
+    sql = """SELECT * FROM 2Concept_table"""
+    mycursor.execute(sql)
+    rows = mycursor.fetchall()
+    for i in range(len(rows)):
+        for j in range(1, len(rows[i])):
+            if (rows[i][j] == 1):
+                print("Found Concept " + concepts[j - 1] + " in doc_id " + str(rows[i][0]))
+
+#Makes a binary table for the keywords
 def makeBinaryTable(keywords, doc_Num):
     columns = []
     for keyword in keywords:
-        columns.append(keyword + ' int DEFAULT 0')
+        columns.append('_' + keyword  + ' int DEFAULT 0')
     mycursor.execute("DROP TABLE IF EXISTS binary_table")
     sql = 'CREATE TABLE binary_table (doc_id int,' + ', '.join(columns) + ',PRIMARY KEY (doc_id));'
     mycursor.execute(sql)
@@ -329,31 +311,56 @@ def makeBinaryTable(keywords, doc_Num):
         mycursor.execute(sql, (doc + 1,))
 
     for keyword in keywords:
-        sql = "SELECT doc_id from tfidf_table where token = %s"
+        sql = "SELECT DISTINCT doc_id from tfidf_table where token = %s"
         values = (keyword,)
         mycursor.execute(sql, values)
         ids = mycursor.fetchall()
         for id in ids:
-            sql = "UPDATE binary_table SET %s=1 where doc_id=%s" % (keyword, id[0])
+            sql = "UPDATE binary_table SET _%s=1 where doc_id=%s" % (keyword, id[0])
             mycursor.execute(sql)
 
     mydb.commit()
 
 
 # Main
-tfScores = []
-fileTokens = []
+print('\n')
+splitSentences = input("Split the Documents by sentences? Enter yes or no: ")
+if(splitSentences == 'yes'):
+    splitSentences = True
+elif(splitSentences == 'no'):
+    splitSentences = False
+else:
+    print("You did not enter a valid input, please enter yes or no exactly next time.")
+    exit()
+files = []
+for i in range(1, len(sys.argv)):
+    files.append(sys.argv[i])
 
-documentArray = []
+print('\n')
+print("The files are: " + str(files))
+print('\n')
+
+tfScores = [] #keeps track of tfScores
+fileTokens = [] #keeps track of filetokens
+
+documentArray = [] #Keeps track of the documents
 
 print('Running program, please wait...')
-# Divide Document into substring
-for x in range(DOC_START, DOC_END + 1):
-    documentString = open('newDocs%d.txt' % (x), encoding='windows-1252').read() #Get data from one file
-    documentArray.extend(splitDocument(documentString))
+
+for fileName in files:
+
+    try:
+        documentString = open(fileName, encoding='utf-8').read() #Get data from one file
+    except:
+        documentString = open(fileName, encoding='windows-1252').read()
+    if(splitSentences):
+        documentArray.extend(splitDocument(documentString))
+    else:
+        documentArray.append(documentString)
+            
 
 
-print("Length of document array is %d" % (len(documentArray)))
+#print("Length of document array is %d" % (len(documentArray)))
 #Collect all the tokens
 for y in range(len(documentArray)):
     tokens = tokenizeString(documentArray[y])
@@ -373,8 +380,16 @@ for z in range(len(documentArray)):
 mydb.commit()
 #Print a table for each document
 
-print("Length of array was : ", len(documentArray))
 keywords = calculateGap()
+print("\nThe keywords are:")
 print(keywords)
 
 makeBinaryTable(keywords, len(documentArray))
+
+two_concepts = make2ConceptTable(keywords, len(documentArray))
+print("\nThe 2 concepts are: ")
+print(two_concepts)
+
+print2ConceptLocations(two_concepts, len(documentArray), files)
+
+print2ConceptTable()
